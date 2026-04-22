@@ -1,0 +1,71 @@
+const TAG_PREFIXES = {
+  codex: '[codex]',
+  'claude-code': '[claude-code]',
+  'clio-agent': '[clio-agent]',
+};
+
+const TAG_ALIASES = {
+  codex: 'codex',
+  claude: 'claude-code',
+  'claude-code': 'claude-code',
+  clio: 'clio-agent',
+  'clio-agent': 'clio-agent',
+};
+
+const KNOWN_TAGS = Object.keys(TAG_PREFIXES);
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const PREFIX_PATTERN = new RegExp(
+  `^\\[(${KNOWN_TAGS.map((tag) => escapeRegex(tag)).join('|')})\\]\\s*`,
+  'i'
+);
+
+function normalizeTag(tagInput) {
+  if (typeof tagInput !== 'string') return null;
+  const key = tagInput.trim().toLowerCase();
+  return TAG_ALIASES[key] ?? null;
+}
+
+function getPrefixForTag(tagInput) {
+  const normalizedTag = normalizeTag(tagInput);
+  if (!normalizedTag) return null;
+  return TAG_PREFIXES[normalizedTag];
+}
+
+function hasKnownPrefix(title) {
+  if (typeof title !== 'string') return false;
+  return PREFIX_PATTERN.test(title.trim());
+}
+
+function buildTaggedTitle(tagInput, rawTitle) {
+  const prefix = getPrefixForTag(tagInput);
+  if (!prefix) {
+    throw new Error(
+      `Invalid or missing tag "${tagInput ?? ''}". Allowed: codex, claude-code, clio-agent.`
+    );
+  }
+
+  if (typeof rawTitle !== 'string' || rawTitle.trim().length === 0) {
+    throw new Error('Missing required --title value.');
+  }
+
+  const title = rawTitle.trim();
+  if (hasKnownPrefix(title)) {
+    throw new Error('Title must be unprefixed. Provide raw title text and let helper prepend the tag.');
+  }
+
+  return `${prefix} ${title}`;
+}
+
+export {
+  buildTaggedTitle,
+  getPrefixForTag,
+  hasKnownPrefix,
+  KNOWN_TAGS,
+  normalizeTag,
+  TAG_ALIASES,
+  TAG_PREFIXES,
+};
